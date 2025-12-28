@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class ClientService {
@@ -40,6 +41,34 @@ public class ClientService {
             VehicleType vehicleType = vehicleTypeService.getById(vehicleId);
             client.setVehicleType(vehicleType);
         }
+        return clientRepository.save(client);
+    }
+
+    @Transactional
+    public Client updateClientPartially(Long id, Map<String, Object> updates) {
+        Client client = getById(id);
+
+        // Actualizar solo los campos que vienen
+        if (updates.containsKey("price")) {
+            client.setPrice((Integer) updates.get("price"));
+        }
+        if (updates.containsKey("code")) {
+            client.setCode((String) updates.get("code"));
+        }
+        // Puedes agregar más si quieres (metodoPago, clover, etc.)
+
+        // vehicleType: si viene ID, mantenerlo
+        if (updates.containsKey("vehicleType")) {
+            Object vt = updates.get("vehicleType");
+            if (vt instanceof Map) {
+                Long vtId = Long.valueOf(((Map<?, ?>) vt).get("id").toString());
+                if (vtId != null) {
+                    VehicleType vehicleType = vehicleTypeService.getById(vtId);
+                    client.setVehicleType(vehicleType);
+                }
+            }
+        }
+
         return clientRepository.save(client);
     }
 
@@ -81,7 +110,7 @@ public class ClientService {
     }*/
 
 
-    @Transactional
+  /*  @Transactional
     public Client reserveSpace(String spaceKey, Client clientData) {
         Space space = spaceRepository.findById(spaceKey)
                 .orElseThrow(() -> new RuntimeException("Espacio no encontrado: " + spaceKey));
@@ -132,6 +161,74 @@ public class ClientService {
 
         return client;
     }
+*/
+
+    @Transactional
+    public Client reserveSpace(String spaceKey, Client clientData) {
+        Space targetSpace = spaceRepository.findById(spaceKey)
+                .orElseThrow(() -> new RuntimeException("Espacio no encontrado: " + spaceKey));
+
+        if (targetSpace.isOccupied()) {
+            throw new RuntimeException("El espacio ya está ocupado");
+        }
+
+        Client client;
+
+        // SI VIENE ID → ACTUALIZAR CLIENTE EXISTENTE
+        if (clientData.getId() != null) {
+            client = clientRepository.findById(clientData.getId())
+                    .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
+
+            // LIBERAR ESPACIO ANTERIOR SI TENÍA UNO DIFERENTE
+            String oldSpaceKey = client.getSpaceKey();
+            if (oldSpaceKey != null && !oldSpaceKey.equals(spaceKey)) {
+                Space oldSpace = spaceRepository.findById(oldSpaceKey).orElse(null);
+                if (oldSpace != null) {
+                    oldSpace.setOccupied(false);
+                    oldSpace.setHold(false);
+                    oldSpace.setClientId(null);
+                    oldSpace.setStartTime(null);
+                    spaceRepository.save(oldSpace);
+                    System.out.println("Espacio anterior liberado: " + oldSpaceKey);
+                }
+            }
+        } else {
+            // NUEVO CLIENTE
+            client = new Client();
+        }
+
+        // ACTUALIZAR DATOS DEL CLIENTE
+        client.setName(clientData.getName());
+        client.setDni(clientData.getDni());
+        client.setPhoneRaw(clientData.getPhoneRaw());
+        client.setPhoneIntl(clientData.getPhoneIntl());
+        client.setCode(clientData.getCode());
+        client.setVehicle(clientData.getVehicle());
+        client.setPlate(clientData.getPlate());
+        client.setNotes(clientData.getNotes());
+        client.setCategory(clientData.getCategory());
+        client.setPrice(clientData.getPrice());
+        client.setSpaceKey(spaceKey);  // ← Actualizamos el spaceKey del cliente
+
+        // VehicleType
+        if (clientData.getVehicleType() != null && clientData.getVehicleType().getId() != null) {
+            VehicleType vt = vehicleTypeService.getById(clientData.getVehicleType().getId());
+            client.setVehicleType(vt);
+        }
+
+        // GUARDAR CLIENTE
+        client = clientRepository.save(client);
+
+        // OCUPAR ESPACIO NUEVO
+        targetSpace.setOccupied(true);
+        targetSpace.setHold(false);
+        targetSpace.setClientId(client.getId());
+        targetSpace.setStartTime(System.currentTimeMillis());
+        spaceRepository.save(targetSpace);
+
+        return client;
+    }
+
     @Transactional
     public void releaseSpace(String spaceKey) {
         Space space = spaceRepository.findById(spaceKey)

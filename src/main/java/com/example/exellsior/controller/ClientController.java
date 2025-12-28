@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/clients")
@@ -56,13 +57,18 @@ public class ClientController {
 
 
 
-    @PutMapping("/{id}")
+    /*@PutMapping("/{id}")
     public Client update(@PathVariable Long id, @RequestBody Client updatedClient) {
         // Validamos que el cliente exista
         clientService.getById(id);
 
         updatedClient.setId(id);
         return clientService.saveClient(updatedClient);
+    }*/
+
+    @PutMapping("/{id}")
+    public Client update(@PathVariable Long id, @RequestBody Map<String, Object> updates) {
+        return clientService.updateClientPartially(id, updates);
     }
 
     @DeleteMapping("/{id}")
