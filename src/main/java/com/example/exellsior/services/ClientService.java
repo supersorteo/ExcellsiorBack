@@ -44,7 +44,7 @@ public class ClientService {
         return clientRepository.save(client);
     }
 
-    @Transactional
+   /* @Transactional
     public Client updateClientPartially(Long id, Map<String, Object> updates) {
         Client client = getById(id);
 
@@ -58,6 +58,38 @@ public class ClientService {
         // Puedes agregar más si quieres (metodoPago, clover, etc.)
 
         // vehicleType: si viene ID, mantenerlo
+        if (updates.containsKey("vehicleType")) {
+            Object vt = updates.get("vehicleType");
+            if (vt instanceof Map) {
+                Long vtId = Long.valueOf(((Map<?, ?>) vt).get("id").toString());
+                if (vtId != null) {
+                    VehicleType vehicleType = vehicleTypeService.getById(vtId);
+                    client.setVehicleType(vehicleType);
+                }
+            }
+        }
+
+        return clientRepository.save(client);
+    }*/
+
+
+    @Transactional
+    public Client updateClientPartially(Long id, Map<String, Object> updates) {
+        Client client = getById(id);
+
+        if (updates.containsKey("price")) {
+            client.setPrice((Integer) updates.get("price"));
+        }
+        if (updates.containsKey("code")) {
+            client.setCode((String) updates.get("code"));
+        }
+        if (updates.containsKey("paymentMethod")) {
+            client.setPaymentMethod((String) updates.get("paymentMethod"));
+        }
+        if (updates.containsKey("clover")) {
+            Object cloverObj = updates.get("clover");
+            client.setClover(cloverObj != null ? Integer.valueOf(cloverObj.toString()) : null);
+        }
         if (updates.containsKey("vehicleType")) {
             Object vt = updates.get("vehicleType");
             if (vt instanceof Map) {
@@ -105,63 +137,7 @@ public class ClientService {
         return clientRepository.findByDni(dni).orElse(null);
     }
 
-    /* public List<Client> findByDni(String dni) {
-        return clientRepository.findByDniList(dni);
-    }*/
 
-
-  /*  @Transactional
-    public Client reserveSpace(String spaceKey, Client clientData) {
-        Space space = spaceRepository.findById(spaceKey)
-                .orElseThrow(() -> new RuntimeException("Espacio no encontrado: " + spaceKey));
-
-        if (space.isOccupied()) {
-            throw new RuntimeException("El espacio ya está ocupado");
-        }
-
-        Client client;
-
-        // SI VIENE ID → ACTUALIZAR CLIENTE EXISTENTE
-        if (clientData.getId() != null) {
-            client = clientRepository.findById(clientData.getId())
-                    .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
-        } else {
-            // SI NO → CREAR NUEVO
-            client = new Client();
-        }
-
-        // ACTUALIZAR DATOS DEL CLIENTE
-        client.setName(clientData.getName());
-        client.setDni(clientData.getDni());
-        client.setPhoneRaw(clientData.getPhoneRaw());
-        client.setPhoneIntl(clientData.getPhoneIntl());
-        client.setCode(clientData.getCode());
-        client.setVehicle(clientData.getVehicle());
-        client.setPlate(clientData.getPlate());
-        client.setNotes(clientData.getNotes());
-        client.setCategory(clientData.getCategory());
-        client.setPrice(clientData.getPrice());
-        client.setSpaceKey(spaceKey);
-
-        // VehicleType
-        if (clientData.getVehicleType() != null && clientData.getVehicleType().getId() != null) {
-            VehicleType vt = vehicleTypeService.getById(clientData.getVehicleType().getId());
-            client.setVehicleType(vt);
-        }
-
-        // GUARDAR CLIENTE (crea o actualiza)
-        client = clientRepository.save(client);
-
-        // ACTUALIZAR ESPACIO
-        space.setOccupied(true);
-        space.setHold(false);
-        space.setClientId(client.getId());
-        space.setStartTime(System.currentTimeMillis());
-        spaceRepository.save(space);
-
-        return client;
-    }
-*/
 
     @Transactional
     public Client reserveSpace(String spaceKey, Client clientData) {
@@ -209,6 +185,7 @@ public class ClientService {
         client.setCategory(clientData.getCategory());
         client.setPrice(clientData.getPrice());
         client.setSpaceKey(spaceKey);  // ← Actualizamos el spaceKey del cliente
+        client.setClover(client.getClover());
 
         // VehicleType
         if (clientData.getVehicleType() != null && clientData.getVehicleType().getId() != null) {
@@ -256,6 +233,8 @@ public class ClientService {
             client.setVehicleType(null);
             client.setPlate(null);
             client.setNotes(null);
+            client.setPaymentMethod(null);
+            client.setClover(null);
 
             clientRepository.save(client);
         }
@@ -264,7 +243,7 @@ public class ClientService {
 
     @Transactional
     public void resetAllData() {
-        // Liberar todos los espacios
+        // 1. Liberar todos los espacios
         List<Space> allSpaces = spaceRepository.findAll();
         allSpaces.forEach(space -> {
             space.setOccupied(false);
@@ -274,9 +253,21 @@ public class ClientService {
         });
         spaceRepository.saveAll(allSpaces);
 
-        // Eliminar todos los clientes
-        clientRepository.deleteAll();
-    }
+        // 2. Limpiar datos de reserva en TODOS los clientes (sin borrarlos)
+        List<Client> allClients = clientRepository.findAll();
+        allClients.forEach(client -> {
+            client.setSpaceKey(null);
+            client.setCode(null);
+            client.setVehicle(null);
+            client.setCategory(null);
+            client.setPrice(null);
+            client.setVehicleType(null);
+            client.setPlate(null);
+            client.setNotes(null);
+        });
+        clientRepository.saveAll(allClients);
 
+        System.out.println("Cierre del día completado: espacios liberados y datos de reserva limpiados en todos los clientes");
+    }
 
 }

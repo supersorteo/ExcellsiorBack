@@ -3,6 +3,7 @@ package com.example.exellsior.entity;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Digits;
 
 @Entity
 @Table(name = "clients")
@@ -42,6 +43,11 @@ public class Client {
     @JoinColumn(name = "vehicle_type_id")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private VehicleType vehicleType;
+
+    private String paymentMethod;  // "efectivo", "credito", "prepago"
+
+    @Digits(integer = 4, fraction = 0, message = "Clover debe tener exactamente 4 dígitos")
+    private Integer clover;
 
     public Client() {}
 
@@ -147,5 +153,21 @@ public class Client {
 
     public void setVehicleType(VehicleType vehicleType) {
         this.vehicleType = vehicleType;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
+
+    public Integer getClover() {
+        return clover;
+    }
+
+    public void setClover(Integer clover) {
+        this.clover = clover;
     }
 }
