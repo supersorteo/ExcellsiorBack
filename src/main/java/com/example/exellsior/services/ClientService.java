@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -186,6 +187,7 @@ public class ClientService {
         client.setPrice(clientData.getPrice());
         client.setSpaceKey(spaceKey);  // ← Actualizamos el spaceKey del cliente
         client.setClover(client.getClover());
+        client.setEntryTimestamp(new Date());
 
         // VehicleType
         if (clientData.getVehicleType() != null && clientData.getVehicleType().getId() != null) {
@@ -207,7 +209,7 @@ public class ClientService {
     }
 
     @Transactional
-    public void releaseSpace(String spaceKey) {
+    public void releaseSpace0(String spaceKey) {
         Space space = spaceRepository.findById(spaceKey)
                 .orElseThrow(() -> new RuntimeException("Espacio no encontrado: " + spaceKey));
 
@@ -240,6 +242,24 @@ public class ClientService {
         }
     }
 
+    @Transactional
+    public void releaseSpace(String spaceKey) {
+        Space space = spaceRepository.findById(spaceKey)
+                .orElseThrow(() -> new RuntimeException("Espacio no encontrado: " + spaceKey));
+
+        // Solo liberar el espacio
+        space.setOccupied(false);
+        space.setHold(false);
+        space.setClientId(null);
+        space.setStartTime(null);
+        spaceRepository.save(space);
+
+        // ← ELIMINAR TODO ESTO
+        // NO tocar el cliente → queda con todos sus datos (precio, método de pago, clover, etc.)
+        // if (clientId != null) { ... } ← BORRAR COMPLETO
+
+        System.out.println("Espacio " + spaceKey + " liberado. Cliente mantiene todos sus datos para el reporte del día");
+    }
 
     @Transactional
     public void resetAllData() {
@@ -264,6 +284,7 @@ public class ClientService {
             client.setVehicleType(null);
             client.setPlate(null);
             client.setNotes(null);
+            client.setEntryTimestamp(null);
         });
         clientRepository.saveAll(allClients);
 

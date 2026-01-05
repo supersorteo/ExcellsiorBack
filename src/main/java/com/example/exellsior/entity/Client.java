@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Digits;
 
+import java.util.Date;
+
 @Entity
 @Table(name = "clients")
 public class Client {
@@ -48,6 +50,10 @@ public class Client {
 
     @Digits(integer = 4, fraction = 0, message = "Clover debe tener exactamente 4 dígitos")
     private Integer clover;
+
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "entry_timestamp")
+    private Date entryTimestamp;
 
     public Client() {}
 
@@ -169,5 +175,13 @@ public class Client {
 
     public void setClover(Integer clover) {
         this.clover = clover;
+    }
+
+    public Date getEntryTimestamp() {
+        return entryTimestamp;
+    }
+
+    public void setEntryTimestamp(Date entryTimestamp) {
+        this.entryTimestamp = entryTimestamp;
     }
 }
